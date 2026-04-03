@@ -1,56 +1,6 @@
 import cv2
 import numpy as np
 
-def warp_and_stitch(img1, img2, H):
-    """
-    Bẻ cong img1 để khớp với góc nhìn của img2 và ghép chúng lại.
-    Sử dụng thuật toán trộn ảnh để làm mượt đường giao nhau một cách tự nhiên.
-    """
-    h1, w1 = img1.shape[:2]
-    h2, w2 = img2.shape[:2]
-
-    # 1. Lấy tọa độ 4 góc của cả hai ảnh
-    corners1 = np.float32([[0, 0], [0, h1], [w1, h1], [w1, 0]]).reshape(-1, 1, 2)
-    corners2 = np.float32([[0, 0], [0, h2], [w2, h2], [w2, 0]]).reshape(-1, 1, 2)
-
-    # 2. Áp dụng ma trận H để tìm vị trí mới của 4 góc img1
-    warped_corners1 = cv2.perspectiveTransform(corners1, H)
-
-    # 3. Gộp tọa độ góc để tìm giới hạn khung hình lớn nhất
-    all_corners = np.concatenate((warped_corners1, corners2), axis=0)
-    
-    [x_min, y_min] = np.int32(all_corners.min(axis=0).ravel() - 0.5)
-    [x_max, y_max] = np.int32(all_corners.max(axis=0).ravel() + 0.5)
-
-    # 4. Tính toán mức độ tịnh tiến để đưa các tọa độ âm về dương
-    translation_dist = [-x_min, -y_min]
-    
-    T = np.array([[1, 0, translation_dist[0]],
-                  [0, 1, translation_dist[1]],
-                  [0, 0, 1]], dtype=np.float64)
-
-    # Kích thước của ảnh toàn cảnh
-    out_width = x_max - x_min
-    out_height = y_max - y_min
-
-    # 5. Khung hình thứ nhất: Bẻ cong img1 với ma trận mới
-    warped_img1 = cv2.warpPerspective(img1, T.dot(H), (out_width, out_height))
-
-    # 6. Khung hình thứ hai: Tạo mảng đen cùng kích thước và đặt img2 vào đúng vị trí tịnh tiến
-    translated_img2 = np.zeros_like(warped_img1)
-    
-    y_start = translation_dist[1]
-    y_end = h2 + translation_dist[1]
-    x_start = translation_dist[0]
-    x_end = w2 + translation_dist[0]
-    
-    translated_img2[y_start:y_end, x_start:x_end] = img2
-
-    # 7. Hợp nhất hai khung hình bằng kỹ thuật trộn mượt
-    result_img = blend_panoramas(warped_img1, translated_img2)
-
-    return result_img
-
 def blend_panoramas(warped_img, translated_img):
     """
     Trộn hai ảnh đã được căn chỉnh trên cùng một kích thước khung hình lớn.
@@ -79,3 +29,92 @@ def blend_panoramas(warped_img, translated_img):
     blended_img = (warped_img * alpha) + (translated_img * (1.0 - alpha))
     
     return blended_img.astype(np.uint8)
+
+def warp_and_stitch(img1, img2, H, max_dim=8000):
+    """
+    Bẻ cong img1 để khớp với góc nhìn của img2 và ghép chúng lại.
+    Có bổ sung chốt chặn an toàn kích thước để chống tràn RAM.
+    """
+    h1, w1 = img1.shape[:2]
+    h2, w2 = img2.shape[:2]
+
+    corners1 = np.float32([[0, 0], [0, h1], [w1, h1], [w1, 0]]).reshape(-1, 1, 2)
+    corners2 = np.float32([[0, 0], [0, h2], [w2, h2], [w2, 0]]).reshape(-1, 1, 2)
+
+    warped_corners1 = cv2.perspectiveTransform(corners1, H)
+
+    all_corners = np.concatenate((warped_corners1, corners2), axis=0)
+    
+    [x_min, y_min] = np.int32(all_corners.min(axis=0).ravel() - 0.5)
+    [x_max, y_max] = np.int32(all_corners.max(axis=0).ravel() + 0.5)
+
+    out_width = x_max - x_min
+    out_height = y_max - y_min
+
+    # CHỐT CHẶN AN TOÀN TRÁNH TRÀN BỘ NHỚ
+    if out_width > max_dim or out_height > max_dim:
+        print(f" -> CẢNH BÁO: Khung hình quá lớn ({out_width}x{out_height}). Đang thu hẹp lại mức {max_dim}x{max_dim}.")
+        out_width = min(out_width, max_dim)
+        out_height = min(out_height, max_dim)
+        x_max = x_min + out_width
+        y_max = y_min + out_height
+
+    translation_dist = [-x_min, -y_min]
+    
+    T = np.array([[1, 0, translation_dist[0]],
+                  [0, 1, translation_dist[1]],
+                  [0, 0, 1]], dtype=np.float64)
+
+    warped_img1 = cv2.warpPerspective(img1, T.dot(H), (out_width, out_height))
+
+    translated_img2 = np.zeros_like(warped_img1)
+    
+    y_start = translation_dist[1]
+    y_end = min(h2 + translation_dist[1], out_height)
+    x_start = translation_dist[0]
+    x_end = min(w2 + translation_dist[0], out_width)
+    
+    # Tính toán lại vùng ROI hợp lệ trong trường hợp khung hình bị giới hạn
+    roi_h = y_end - y_start
+    roi_w = x_end - x_start
+    
+    translated_img2[y_start:y_end, x_start:x_end] = img2[:roi_h, :roi_w]
+
+    result_img = blend_panoramas(warped_img1, translated_img2)
+
+    return result_img
+
+def stitch_image_sequence(image_list, method='SIFT'):
+    """
+    Hàm ghép nối tiếp một danh sách ảnh từ trái sang phải.
+    """
+    # Khởi tạo bức ảnh toàn cảnh ban đầu là ảnh đầu tiên bên trái
+    panorama = image_list[0]
+    
+    for i in range(1, len(image_list)):
+        print(f"[{method}] Đang ghép ảnh {i} và ảnh {i+1}...")
+        next_img = image_list[i]
+        
+        # 1. Trích xuất đặc trưng dựa trên phương pháp được chọn
+        if method == 'SIFT':
+            kp1, des1 = extract_features_sift(panorama)
+            kp2, des2 = extract_features_sift(next_img)
+        else:
+            kp1, des1 = extract_features_orb(panorama)
+            kp2, des2 = extract_features_orb(next_img)
+            
+        # 2. So khớp đặc trưng
+        matches = match_features(des1, des2, method=method, ratio_thresh=0.75)
+        print(f" -> Tìm thấy {len(matches)} điểm khớp hợp lệ.")
+        
+        if len(matches) < 4:
+            print(f" -> CẢNH BÁO: Không đủ điểm khớp để ghép tiếp ảnh {i+1}. Dừng lại.")
+            break
+            
+        # 3. Tính toán ma trận biến đổi
+        H, mask = calculate_homography(kp1, kp2, matches)
+        
+        # 4. Thực hiện căn chỉnh và ghép
+        panorama = warp_and_stitch(panorama, next_img, H)
+        
+    return panorama

@@ -1,14 +1,13 @@
 import cv2
 
-def extract_features_sift(image):
+def extract_features_sift(image, nfeatures=2000):
     """
-    Trích xuất đặc trưng bằng thuật toán SIFT.
-    Tạo ra các điểm đặc trưng bất biến với tỷ lệ và góc xoay.
+    Trích xuất đặc trưng bằng SIFT với số lượng điểm giới hạn.
     """
-    # Chuyển sang ảnh xám nếu ảnh đầu vào là ảnh màu
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY) if len(image.shape) == 3 else image
     
-    sift = cv2.SIFT_create()
+    # Thêm giới hạn nfeatures tương tự như thuật toán ORB
+    sift = cv2.SIFT_create(nfeatures=nfeatures)
     keypoints, descriptors = sift.detectAndCompute(gray, None)
     
     return keypoints, descriptors
