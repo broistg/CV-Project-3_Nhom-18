@@ -21,9 +21,12 @@ def show_image(image, title="Image", cmap_type='gray'):
     """
     Hàm hiển thị ảnh đơn bằng Matplotlib.
     """
+    plt.figure()
     plt.imshow(image, cmap=cmap_type)
     plt.title(title)
     plt.axis('off')
+    plt.tight_layout()
+    plt.show()
 
 def show_comparison(img1, img2, title1="Original", title2="Processed", cmap1='gray', cmap2='gray'):
     """
