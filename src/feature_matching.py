@@ -5,6 +5,9 @@ def match_features(desc1, desc2, method='SIFT', ratio_thresh=0.75):
     So khớp các vector mô tả giữa 2 ảnh.
     Sử dụng kiểm tra tỷ lệ Lowe để lọc bỏ các cặp điểm không đáng tin cậy.
     """
+    if desc1 is None or desc2 is None:
+        return []
+
     if method == 'SIFT':
         # SIFT sử dụng khoảng cách Euclid (L2)
         bf = cv2.BFMatcher(cv2.NORM_L2)
@@ -18,7 +21,11 @@ def match_features(desc1, desc2, method='SIFT', ratio_thresh=0.75):
     raw_matches = bf.knnMatch(desc1, desc2, k=2)
 
     good_matches = []
-    for m, n in raw_matches:
+    for pair in raw_matches:
+        if len(pair) < 2:
+            continue
+
+        m, n = pair
         if m.distance < ratio_thresh * n.distance:
             good_matches.append(m)
             
