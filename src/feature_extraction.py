@@ -12,7 +12,7 @@ def extract_features_sift(image, nfeatures=2000):
     
     return keypoints, descriptors
 
-def extract_features_orb(image, nfeatures=2000):
+def extract_features_orb(image, nfeatures=3000):
     """
     Trích xuất đặc trưng bằng thuật toán ORB.
     Tốc độ xử lý nhanh hơn SIFT, thích hợp so sánh hiệu năng.
