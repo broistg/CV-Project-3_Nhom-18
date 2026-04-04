@@ -36,4 +36,5 @@ def draw_feature_matches(img1, kp1, img2, kp2, matches):
     Vẽ các đường nối giữa các điểm đã khớp thành công.
     """
     return cv2.drawMatches(img1, kp1, img2, kp2, matches, None, 
-                           flags=cv2.DrawMatchesFlags_NOT_DRAW_SINGLE_POINTS)
+                           matchColor = (255,255,0), singlePointColor = (255,0,0),
+                           flags=cv2.DrawMatchesFlags_DEFAULT)
