@@ -83,38 +83,3 @@ def warp_and_stitch(img1, img2, H, max_dim=8000):
     result_img = blend_panoramas(warped_img1, translated_img2)
 
     return result_img
-
-def stitch_image_sequence(image_list, method='SIFT'):
-    """
-    Hàm ghép nối tiếp một danh sách ảnh từ trái sang phải.
-    """
-    # Khởi tạo bức ảnh toàn cảnh ban đầu là ảnh đầu tiên bên trái
-    panorama = image_list[0]
-    
-    for i in range(1, len(image_list)):
-        print(f"[{method}] Đang ghép ảnh {i} và ảnh {i+1}...")
-        next_img = image_list[i]
-        
-        # 1. Trích xuất đặc trưng dựa trên phương pháp được chọn
-        if method == 'SIFT':
-            kp1, des1 = extract_features_sift(panorama)
-            kp2, des2 = extract_features_sift(next_img)
-        else:
-            kp1, des1 = extract_features_orb(panorama)
-            kp2, des2 = extract_features_orb(next_img)
-            
-        # 2. So khớp đặc trưng
-        matches = match_features(des1, des2, method=method, ratio_thresh=0.75)
-        print(f" -> Tìm thấy {len(matches)} điểm khớp hợp lệ.")
-        
-        if len(matches) < 4:
-            print(f" -> CẢNH BÁO: Không đủ điểm khớp để ghép tiếp ảnh {i+1}. Dừng lại.")
-            break
-            
-        # 3. Tính toán ma trận biến đổi
-        H, mask = calculate_homography(kp1, kp2, matches)
-        
-        # 4. Thực hiện căn chỉnh và ghép
-        panorama = warp_and_stitch(panorama, next_img, H)
-        
-    return panorama

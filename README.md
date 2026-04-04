@@ -1,79 +1,101 @@
-# Computer Vision - Project 2: Gradient Domain Editing & Biến đổi hình học
+# Computer Vision - Project 3: Image Stitching & Panorama Creation
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/broistg/CV-Project-2_Nhom-18/blob/main/notebooks/CV_Project_2_Demo.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/broistg/CV-Project-3_Nhom-18/blob/main/notebooks/CV_Project_3_Demo.ipynb)
 
-Bài tập lớn 2 - Computer Vision | HK 2025-2026 | Giảng viên: ThS. Võ Thanh Hùng
-
----
-
-## 📝 Giới thiệu
-
-Project này giải quyết hai bài toán cơ bản nhưng quan trọng trong Computer Vision:
-
-1. **Gradient Domain Editing (Poisson Blending):** Kỹ thuật ghép ảnh dựa trên việc giải phương trình Poisson để hòa trộn miền gradient của ảnh nguồn vào ảnh đích, giúp loại bỏ biên và cân bằng ánh sáng tự nhiên hơn so với cắt ghép thông thường. So sánh với các phép ghép ảnh trực tiếp.
-2. **Geometric Transformations:** Thực hiện và so sánh các phép biến đổi hình học (Affine vs. Projective). Ứng dụng Homography để dán ảnh quảng cáo lên bề mặt phẳng trong không gian 3D.
+Bài tập lớn 3 - Computer Vision | HK 2025-2026 | Giảng viên: ThS. Võ Thanh Hùng
 
 ---
 
-## 👥 Thành viên nhóm
+## Giới thiệu
 
-| MSSV | Họ và Tên | Công việc thực hiện |
-| :---: | :---: | :--- |
-| 2111493 | Nguyễn Minh Khánh | Các phép biến đổi hình học cơ bản |
-| 2233163 | Nguyễn Anh Duy | Gradient Domain Editing |
-| 2011706 | Nguyễn Nhựt Nguyên | Phép biến đổi Projective & Ứng dụng Mở rộng |
-| 2310653 | Lê Tiến Đạt | Thực nghiệm & Demo |
+Project này xây dựng một pipeline ghép ảnh toàn cảnh hoàn chỉnh, từ trích xuất đặc trưng đến căn chỉnh hình học và hòa trộn ảnh đầu ra. Mục tiêu là ghép các khung hình chồng lấn thành một ảnh panorama liền mạch, hạn chế đường nối và méo hình ở vùng giao nhau.
+
+Các bước chính trong dự án:
+
+1. Trích xuất đặc trưng bằng SIFT hoặc ORB.
+2. So khớp đặc trưng bằng brute-force matcher và Lowe ratio test.
+3. Ước lượng ma trận homography bằng RANSAC.
+4. Warp ảnh về cùng hệ tọa độ và ghép hai ảnh lại.
+5. Blend vùng chồng lấn bằng trọng số theo distance transform để mượt hơn.
 
 ---
 
-## 📂 Cấu trúc thư mục
+## Tính năng chính
+
+- Hỗ trợ hai bộ trích xuất đặc trưng: SIFT và ORB.
+- So sánh trực quan keypoints và matches giữa hai ảnh.
+- Tính homography ổn định hơn nhờ RANSAC.
+- Ghép ảnh panorama với cơ chế dịch tọa độ và giới hạn kích thước an toàn.
+- Hòa trộn vùng giao nhau để giảm đường nối rõ ràng giữa các ảnh.
+- Có notebook demo để chạy thử toàn bộ pipeline.
+
+---
+
+## Cấu trúc thư mục
 
 ```
-CV-Project-2_Nhom-18/
-├── data/                       # Chứa dữ liệu ảnh (Input/Output)
-│   ├── inputs/                 # Ảnh gốc
-│   │   ├── gde/                # Ảnh cho phần Gradient Domain Editing
-│   │   └── geometry/           # Ảnh cho phần biến đổi hình học
-│   └── outputs/                # Ảnh kết quả sau khi chạy code
-├── notebooks/                  # Demo Colab chạy thử nghiệm
-├── report/                     # Chứa file báo cáo cuối cùng
+CV-Project-3_Nhom-18/
+├── data/
+│   ├── inputs/                  # Ảnh đầu vào cho demo
+│   └── outputs/                 # Kết quả sau khi chạy pipeline
+├── notebooks/
+│   └── CV_Project_3_Demo.ipynb  # Notebook demo chính
+├── report/
 ├── src/
-│   ├── image_blending.py       # Module xử lý Poisson Blending và các phép ghép trực tiếp
-│   ├── geometry_transform.py   # Module xử lý Affine, Rotation, Scaling...
-│   ├── homography.py           # Module xử lý Projective & Dán ảnh tòa nhà
-│   └── utils.py                # Các hàm hỗ trợ đọc/ghi/hiển thị ảnh
+│   ├── feature_extraction.py    # SIFT / ORB và hiển thị keypoints
+│   ├── feature_matching.py      # So khớp đặc trưng và vẽ matches
+│   ├── homography.py            # Tính homography bằng RANSAC
+│   ├── image_stitching.py       # Warp và ghép ảnh panorama
+│   └── utils.py                 # Hàm đọc ảnh, hiển thị, resize
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## ⚙️ Cài đặt
+## Cài đặt
 
-**Yêu cầu:** Python 3.8+
+Yêu cầu: Python 3.8+.
 
 ```bash
-# Clone repository
-git clone https://github.com/broistg/CV-Project-2_Nhom-18.git
-cd CV-Project-2_Nhom-18
-
-# Cài đặt dependencies
+git clone https://github.com/broistg/CV-Project-3_Nhom-18.git
+cd CV-Project-3_Nhom-18
 pip install -r requirements.txt
 ```
 
-**Thư viện sử dụng:** numpy, opencv-python, matplotlib, scipy
+Các thư viện chính sử dụng trong dự án: numpy, opencv-python, matplotlib, scipy.
 
 ---
 
-## 🚀 Hướng dẫn chạy
+## Cách chạy
 
-**Cách 1: Google Colab (Khuyên dùng)**
+### Chạy trên Google Colab
 
-1. Truy cập vào link demo Colab: [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/broistg/CV-Project-2_Nhom-18/blob/main/notebooks/CV_Project_2_Demo.ipynb)
-2. Nhấn nút "Run all" trong Colab để chạy demo dự án.
+1. Mở notebook demo bằng badge Colab ở đầu README.
+2. Chạy lần lượt các cell hoặc chọn `Run all` để thực thi toàn bộ demo.
 
-**Cách 2: Local**
+### Chạy local
 
 ```bash
-jupyter notebook notebooks/CV_Project_2_Demo.ipynb
+jupyter notebook notebooks/CV_Project_3_Demo.ipynb
 ```
+
+Hoặc mở file notebook bằng VS Code và chạy trực tiếp từng cell.
+
+---
+
+## Ghi chú sử dụng
+
+- Ảnh đầu vào nên được đặt trong `data/inputs/`.
+- Kết quả trung gian và ảnh panorama đầu ra có thể lưu vào `data/outputs/`.
+- Nếu ảnh có kích thước quá lớn, pipeline ghép ảnh đã có cơ chế giới hạn kích thước để tránh tốn bộ nhớ quá mức.
+
+---
+
+## Tài liệu tham khảo trong code
+
+- [src/feature_extraction.py](src/feature_extraction.py)
+- [src/feature_matching.py](src/feature_matching.py)
+- [src/homography.py](src/homography.py)
+- [src/image_stitching.py](src/image_stitching.py)
+- [src/utils.py](src/utils.py)
